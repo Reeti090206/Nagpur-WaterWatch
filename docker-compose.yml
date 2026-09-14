@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: waterwatch-db
+    environment:
+      POSTGRES_USER: waterwatch_user
+      POSTGRES_PASSWORD: waterwatch_password
+      POSTGRES_DB: waterwatch_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgis_data:

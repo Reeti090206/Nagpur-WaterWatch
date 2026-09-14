@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/* Fix Leaflet z-index conflicts with Tailwind */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-control {
+  z-index: 399 !important;
+}
+.leaflet-tile-pane {
+  z-index: 200 !important;
+}
+.leaflet-overlay-pane {
+  z-index: 400 !important;
+}
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+.leaflet-popup-pane {
+  z-index: 700 !important;
+}
+
+/* Ensure marker icons render correctly */
+.custom-leaflet-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(51, 65, 85, 0.8);
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(6, 182, 212, 0.8);
+  }
+}
