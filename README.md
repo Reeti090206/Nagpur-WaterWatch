@@ -20,6 +20,103 @@
 
 ---
 
+## 📊 System Architecture & Data Flow Charts
+
+### System Architecture Overview
+
+```mermaid
+flowchart TB
+    subgraph DataSources["📡 Data Ingestion Layer"]
+        IoT["ESP32 / Ultrasonic Sensors\n(Telemetry API / Simulator)"]
+        Weather["OpenWeatherMap API / IMD\n(Rainfall & Forecast)"]
+        Citizen["Citizen Reports\n(Geotagged Photo & Water Depth)"]
+    end
+
+    subgraph CoreBackend["⚙️ FastAPI Backend Services"]
+        TelemetryAPI["Sensor Ingestion Service\n(/api/sensors/readings)"]
+        WeatherSvc["Weather Sync Service\n(Live Intensity Tracker)"]
+        RiskEngine["Predictive Risk Engine\n(Drainage + Rainfall + Telemetry)"]
+        RouteSvc["Safe Route Planner Engine\n(Penalty Overlay on Submerged Underpasses)"]
+        AuthSvc["Auth & Role RBAC\n(Citizen / Authority / Admin)"]
+    end
+
+    subgraph DatabaseLayer["🗄️ Persistence & GIS Storage"]
+        PostGIS[(PostgreSQL + PostGIS\nSensors, Incidents, Water Depth)]
+    end
+
+    subgraph FrontendApp["📱 Next.js 16 User Interface"]
+        LiveMap["Interactive Live GIS Map\n(Leaflet / OpenStreetMap Overlay)"]
+        RouteUI["Intelligent Route Planner\n(Alternative Navigation)"]
+        ReportUI["Citizen Incident Reporter"]
+        AuthorityUI["Municipal Authority Dashboard\n(Verification & Clearance Workflows)"]
+    end
+
+    IoT -->|JSON / API Key| TelemetryAPI
+    Weather -->|REST API| WeatherSvc
+    Citizen -->|HTTP POST| ReportUI
+
+    TelemetryAPI --> PostGIS
+    WeatherSvc --> PostGIS
+    ReportUI --> AuthSvc
+    AuthSvc --> PostGIS
+
+    PostGIS --> RiskEngine
+    RiskEngine --> RouteSvc
+
+    RouteSvc --> RouteUI
+    RiskEngine --> LiveMap
+    PostGIS --> AuthorityUI
+```
+
+### Risk Prediction Pipeline
+
+```mermaid
+flowchart LR
+    A[IoT Water Sensor Depth] --> D{Risk Calculation Engine}
+    B[IMD / OpenWeather Rainfall Rate] --> D
+    C[Drainage Capacity & Historical Vulnerability] --> D
+    
+    D --> E[Risk Score Evaluation: 0 - 100]
+    
+    E -->|0 - 24| LOW["🟢 Low Risk / Normal\n(Depth < 5 cm)"]
+    E -->|25 - 49| MOD["🟡 Moderate Risk\n(Depth 5-15 cm)"]
+    E -->|50 - 74| HIGH["🟠 High Risk\n(Depth 15-30 cm)"]
+    E -->|75 - 100| SEVERE["🔴 Severe Waterlogging\n(Depth > 30 cm)"]
+
+    LOW --> RoutePlanner[Route Planner & GIS Map]
+    MOD --> RoutePlanner
+    HIGH --> RoutePlanner
+    SEVERE --> RoutePlanner
+```
+
+### Citizen Incident Verification Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Citizen as Citizen User
+    participant App as Next.js Frontend
+    participant API as FastAPI Backend
+    participant DB as PostgreSQL Database
+    actor Authority as Municipal Official
+
+    Citizen->>App: Submits Waterlogging Report (Location, Photo, Depth)
+    App->>API: POST /api/reports (Status: PENDING)
+    API->>DB: Save Report & Spatial Coordinates
+    DB-->>API: Saved Report Record
+    API-->>App: Report Submitted Successfully
+
+    Authority->>App: Opens Authority Verification Dashboard
+    App->>API: GET /api/reports?status=PENDING
+    API-->>App: Returns Pending Reports List
+    Authority->>App: Inspects Report & Clicks "Verify" or "Reject"
+    App->>API: PATCH /api/reports/{id}/status (VERIFIED)
+    API->>DB: Update Report Status & Recalculate Road Risk Level
+    API-->>App: Status Updated & GIS Map Updated Real-Time
+```
+
+---
+
 ## 👥 Project Team & Credits
 
 - **Harshita Agrawal** (Roll No. 32)
