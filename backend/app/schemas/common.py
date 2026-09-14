@@ -157,6 +157,9 @@ class RouteAnalysis(BaseModel):
     max_severity: str
     risk_score: float
     recommendation: str
+    traffic_condition: Optional[str] = "Normal"
+    avoided_underpasses: Optional[list[str]] = []
+    coordinates: Optional[list[list[float]]] = []
     segments: list[RouteSegmentRisk]
 
 
@@ -164,3 +167,5 @@ class RouteResponse(BaseModel):
     routes: list[RouteAnalysis]
     recommended_route: int
     recommendation_reason: str
+    is_demo: Optional[bool] = True
+

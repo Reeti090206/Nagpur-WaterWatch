@@ -99,23 +99,40 @@ def generate_demo_route_analysis(
 ) -> dict:
     """
     Generate demo route analysis when Google Maps API is not configured.
-    Creates two synthetic route options with different risk profiles.
+    Creates two synthetic route options with different risk profiles and detailed polylines.
     """
-    # Generate two plausible routes through Nagpur
     mid_lat = (origin[0] + destination[0]) / 2
     mid_lng = (origin[1] + destination[1]) / 2
 
-    # Route A: Direct (potentially through waterlogged areas)
+    # Query severe waterlogging spots in Nagpur to demonstrate avoidance
+    severe_locs = db.query(WaterloggingLocation).filter(
+        WaterloggingLocation.is_active == True,
+        WaterloggingLocation.current_severity == SeverityLevel.SEVERE,
+    ).all()
+    avoided_names = [loc.name for loc in severe_locs] or ["Pardi Naka Underpass", "Narendra Nagar Underpass"]
+
+    # Route A (Direct - intersects low elevation underpasses)
+    # Generate 6 waypoint points along direct vector
     route_a_points = [
         origin,
+        (origin[0] + 0.2 * (destination[0] - origin[0]), origin[1] + 0.2 * (destination[1] - origin[1])),
         (mid_lat, mid_lng),
+        (origin[0] + 0.75 * (destination[0] - origin[0]), origin[1] + 0.75 * (destination[1] - origin[1])),
         destination,
     ]
-    # Route B: Slight detour
+
+    # Route B (Safest Alternative Bypass - arcs away from low-lying underpasses)
+    d_lat = destination[0] - origin[0]
+    d_lng = destination[1] - origin[1]
+    # Perpendicular offset to create an elevated bypass arc
+    perp_lat = -d_lng * 0.35
+    perp_lng = d_lat * 0.35
+
     route_b_points = [
         origin,
-        (mid_lat + 0.005, mid_lng + 0.008),
-        (mid_lat - 0.003, mid_lng + 0.012),
+        (origin[0] + 0.25 * d_lat + perp_lat * 0.5, origin[1] + 0.25 * d_lng + perp_lng * 0.5),
+        (mid_lat + perp_lat, mid_lng + perp_lng),
+        (origin[0] + 0.75 * d_lat + perp_lat * 0.6, origin[1] + 0.75 * d_lng + perp_lng * 0.6),
         destination,
     ]
 
@@ -123,29 +140,35 @@ def generate_demo_route_analysis(
     risk_b = analyze_route_risk(route_b_points, db)
 
     dist_a = haversine_distance(origin[0], origin[1], destination[0], destination[1]) / 1000
-    dist_b = dist_a * 1.12  # slightly longer
+    dist_b = dist_a * 1.15  # 15% longer elevated detour
 
     routes = [
         {
             "route_index": 0,
-            "summary": "Route A (Direct)",
-            "distance_km": round(dist_a, 1),
-            "duration_min": round(dist_a * 3.5, 0),
+            "summary": "Direct Route (Via Main Arterial Underpass)",
+            "distance_km": round(max(dist_a, 2.5), 1),
+            "duration_min": round(max(dist_a, 2.5) * 3.2, 0),
             "affected_segments": risk_a["num_affected"],
             "max_severity": risk_a["max_severity"],
             "risk_score": risk_a["risk_score"],
-            "recommendation": "Higher Risk" if risk_a["risk_score"] > risk_b["risk_score"] else "Lower Risk",
+            "recommendation": "High Waterlogging Risk" if risk_a["risk_score"] > risk_b["risk_score"] else "Safest Option",
+            "traffic_condition": "Heavy / Water Accumulation",
+            "avoided_underpasses": [],
+            "coordinates": [[round(pt[0], 5), round(pt[1], 5)] for pt in route_a_points],
             "segments": risk_a["affected_segments"],
         },
         {
             "route_index": 1,
-            "summary": "Route B (Alternative)",
-            "distance_km": round(dist_b, 1),
-            "duration_min": round(dist_b * 3.5, 0),
+            "summary": "Safest Recommended Route (Elevated Bypass)",
+            "distance_km": round(max(dist_b, 2.9), 1),
+            "duration_min": round(max(dist_b, 2.9) * 2.8, 0),
             "affected_segments": risk_b["num_affected"],
             "max_severity": risk_b["max_severity"],
             "risk_score": risk_b["risk_score"],
-            "recommendation": "Higher Risk" if risk_b["risk_score"] > risk_a["risk_score"] else "Lower Risk",
+            "recommendation": "Safest Option (Avoids Submerged Underpasses)" if risk_b["risk_score"] <= risk_a["risk_score"] else "Higher Risk",
+            "traffic_condition": "Moderate / Normal Flow",
+            "avoided_underpasses": avoided_names,
+            "coordinates": [[round(pt[0], 5), round(pt[1], 5)] for pt in route_b_points],
             "segments": risk_b["affected_segments"],
         },
     ]
@@ -153,10 +176,10 @@ def generate_demo_route_analysis(
     # Determine recommended route
     if risk_a["risk_score"] <= risk_b["risk_score"]:
         recommended = 0
-        reason = "Route A is recommended as it has equal or lower waterlogging risk."
+        reason = "Route 1 is recommended as it has equal or lower waterlogging risk."
     else:
         recommended = 1
-        reason = f"Route B is recommended despite being {round(dist_b - dist_a, 1)} km longer, as it avoids {risk_a['num_affected']} waterlogged area(s) encountered on Route A."
+        reason = f"Route 2 (Elevated Bypass) is recommended despite being {round(dist_b - dist_a, 1)} km longer, as it completely avoids {len(avoided_names)} submerged underpasses ({', '.join(avoided_names[:2])}) encountered on the direct route."
 
     return {
         "routes": routes,
@@ -164,3 +187,4 @@ def generate_demo_route_analysis(
         "recommendation_reason": reason,
         "is_demo": True,
     }
+
