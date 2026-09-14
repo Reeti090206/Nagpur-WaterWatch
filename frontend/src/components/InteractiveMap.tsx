@@ -74,24 +74,24 @@ export const InteractiveMap: React.FC<MapProps> = ({
   const tileLayerRef = useRef<any>(null);
 
   const [isClient, setIsClient] = useState(false);
-  const [activeTileType, setActiveTileType] = useState<"dark" | "streets" | "satellite">("dark");
+  const [activeTileType, setActiveTileType] = useState<"streets" | "voyager" | "satellite">("streets");
   const [selectedItem, setSelectedItem] = useState<LocationItem | null>(null);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Tile layer URLs
+  // Tile layer URLs (100% Free, reliable, no API key required)
   const TILE_URLS = {
-    dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
     streets: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    voyager: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
     satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   };
 
   const TILE_ATTRIBUTIONS = {
-    dark: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
-    streets: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    satellite: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    streets: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    voyager: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
+    satellite: 'Tiles &copy; Esri &mdash; Source: Esri, DigitalGlobe, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
   };
 
   // Initialize Leaflet Map
@@ -116,9 +116,9 @@ export const InteractiveMap: React.FC<MapProps> = ({
           zoomControl: false, // We render custom glassmorphism zoom controls
         });
 
-        // Add base tile layer
-        const tileLayer = L.tileLayer(TILE_URLS.dark, {
-          attribution: TILE_ATTRIBUTIONS.dark,
+        // Add base tile layer (OpenStreetMap streets)
+        const tileLayer = L.tileLayer(TILE_URLS.streets, {
+          attribution: TILE_ATTRIBUTIONS.streets,
           maxZoom: 19,
         }).addTo(map);
         tileLayerRef.current = tileLayer;
@@ -306,7 +306,7 @@ export const InteractiveMap: React.FC<MapProps> = ({
   }, [selectedLocationId, locations]);
 
   // Handle tile switch
-  const handleTileChange = (type: "dark" | "streets" | "satellite") => {
+  const handleTileChange = (type: "streets" | "voyager" | "satellite") => {
     setActiveTileType(type);
     if (mapInstanceRef.current && tileLayerRef.current) {
       import("leaflet").then((L) => {
@@ -347,7 +347,7 @@ export const InteractiveMap: React.FC<MapProps> = ({
           <span className="text-slate-400 font-semibold px-2 flex items-center gap-1">
             <Layers className="w-3.5 h-3.5 text-cyan-400" /> Map Type:
           </span>
-          {(["dark", "streets", "satellite"] as const).map((type) => (
+          {(["streets", "voyager", "satellite"] as const).map((type) => (
             <button
               key={type}
               onClick={() => handleTileChange(type)}
